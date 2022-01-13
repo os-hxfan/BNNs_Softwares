@@ -15,6 +15,19 @@ class ClassificationLoss(nn.Module):
       return ce, ce
 
 
+class MSELoss(nn.Module):
+    def __init__(self, args):
+        super(MSELoss, self).__init__()
+        self.args = args
+
+    def forward(self, outs, target, model, n_batches, n_points):
+        assert len(outs) == len(target)
+
+        squared_error = (outs - target) ** 2
+        mse = squared_error.sum() / len(outs)
+        return mse, mse
+
+
 class _SmoothCrossEntropyLoss(_WeightedLoss):
     def __init__(self, weight=None, reduction='mean', smoothing=0.0):
         super().__init__(weight=weight, reduction=reduction)

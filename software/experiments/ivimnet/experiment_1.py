@@ -5,6 +5,8 @@ sys.path.append("../../")
 sys.path.append("../../../")
 sys.path.append("../../../../")
 
+sys.path.append('c:\\Users\\user\\OneDrive - Imperial College London\\Imperial\\Courses\\2021\\_FYP\\code\\BNNs_Softwares')
+
 import software.utils as utils
 from software.losses import MSELoss
 from software.models.models_ivimnet import IVIMNET
@@ -96,10 +98,10 @@ def sim_signals(SNR, bvalues):
 
 
 def train(model, bvalues, SNR, args, writer):
-    logging.log("## Simulating signals ##")
+    logging.info("## Simulating signals ##")
     X_train, D, f, Dp = sim_signals(SNR, bvalues)
 
-    logging.log("## Preparing training data ##")
+    logging.info("## Preparing training data ##")
     _split = int(np.floor(len(X_train) * 0.9))
     train_set, val_set = tutils.random_split(torch.from_numpy(X_train.astype(np.float32)),
                                              [_split, len(X_train) - _split])
@@ -110,7 +112,7 @@ def train(model, bvalues, SNR, args, writer):
 
     logging.info("### Preparing schedulers and optimizers ###")
     criterion = MSELoss(args)
-    optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad()],
+    optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad],
                                  args.learning_rate, weight_decay=args.weight_decay)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=20.0)
     scheduler = None
@@ -239,6 +241,9 @@ def infer(model, bvalues, SNR, args, writer):
     del inferloader
     torch.cuda.empty_cache()    # TODO: Everywhere I'm just assuming we use cuda. Alright for PoC.
 
+    print('Network output:', Dttrue, Fptrue, Dptrue, S0true)
+    print('Simulation out:', Dt_truth, Fp_truth, Dp_truth)
+
     return Dttrue, Fptrue, Dptrue, S0true
 
 def main():
@@ -256,8 +261,10 @@ def main():
     if not load:
         train(model, bvalues, SNR, args, writer)
 
-    Dttrue, Fptrue, Dptrue, S0true = infer(model, bvalues, SNR, args, writer)
-
+    # Dttrue, Fptrue, Dptrue, S0true = infer(model, bvalues, SNR, args, writer)
+    # See if we get a different result with different runs.
+    for _ in range(5):
+        infer(model, bvalues, SNR, args, writer)
 
 if __name__ == "__main__":
     main()

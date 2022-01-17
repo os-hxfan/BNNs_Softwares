@@ -29,7 +29,7 @@ class IVIMNET(nn.Module):
     def __init__(self, bvalues: np.array, args):
         super(IVIMNET, self).__init__()
         self.args = args
-        self.bvalues = bvalues
+        self.bvalues = torch.from_numpy(bvalues).cuda()
         self.fc_layers = nn.ModuleList([self._make_fc_layer() for _ in range(4)])
         self.encoders = nn.ModuleList([nn.Sequential(*fc_layer, nn.Linear(len(bvalues), 1))
                                        for fc_layer in self.fc_layers])
@@ -63,7 +63,8 @@ class IVIMNET(nn.Module):
         Dp = sigm(params[1], bounds_Dp)
         f0 = sigm(params[3], bounds_f0)
 
-        X = torch.cat((Fp * torch.exp(-self.bvalues * Dp) + f0 * torch.exp(-self.bvalues * Dt)), dim=1)
+        X = Fp * torch.exp(-self.bvalues * Dp) + f0 * torch.exp(-self.bvalues * Dt)
+        print(x.shape, X.shape)
         return X, Dt, Fp / (f0 + Fp), Dp, f0 + Fp
 
     def _make_fc_layer(self):

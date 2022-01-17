@@ -14,62 +14,20 @@ scipy
 joblib
 """
 
+# import sys
+
+# sys.path.append("..\\")
+# sys.path.append("..\\..\\")
+# sys.path.append("..\\..\\..\\")
+# sys.path.append("..\\..\\..\\..\\")
+
 # import libraries
 import numpy as np
-import time
 import scipy.stats as scipy
-import torch
 import matplotlib.pyplot as plt
-import random
-import os
 
 # import IVIMNET libraries
-import deep as deep
-import ivim_fitting_algorithms as fit
-
-
-def augmented_signal(data, bvalues, arg, fraction=0.3, Dmin=0.3 / 1000, Dmax=4.0 / 1000, fmin=0.0, fmax=0.8, Dsmin=0.01,
-                     Dsmax=0.2):
-    """
-    This simulates IVIM curves with real noise from actual data. This can be used as augmented training data.
-    Data is simulated by randomly selecting a value of D, f and D* from within the predefined range.
-
-    input:
-    :param data: real data from experiment
-    :param bvalues: 1D Array of b-values used
-    :param sims: number of simulations to be performed (need a large amount for training)
-
-    optional:
-    :param fraction: fraction of data to augment
-    :param Dmin: minimal simulated D. Default = 0.0003
-    :param Dmax: maximal simulated D. Default = 0.004
-    :param fmin: minimal simulated f. Default = 0.0
-    :param Dmax: minimal simulated f. Default = 0.8
-    :param Dpmin: minimal simulated D*. Default = 0.01
-    :param Dpmax: minimal simulated D*. Default = 0.2
-
-    :return IVIM_signal_noisy: 2D array with augmented noisy IVIM signal (x-axis is sims long, y-axis is len(b-values) long)
-    """
-    arg = deep.checkarg(arg)
-    indx = np.argsort(bvalues.copy())
-    sdata = np.shape(data)[0]
-    # train
-    net = deep.learn_IVIM(data[:, indx], bvalues[indx], arg)
-    # select random samples to augment
-    sels = random.sample(range(sdata), round(sdata * fraction))
-    # predict noise
-    noise = deep.predict_noise(data[sels][:, indx], bvalues[indx], net, arg)
-    # augment data
-    IVIM_signal_noisy, D, f, Dp = sim_signal(0, bvalues[indx], sims=len(noise), Dmin=Dmin, Dmax=Dmax, fmin=fmin,
-                                             fmax=fmax,
-                                             Dsmin=Dsmin, Dsmax=Dsmax)
-    # add noise to augmented data
-    IVIM_signal_noisy = IVIM_signal_noisy + noise
-    indx_back = np.argsort(indx)
-    del net
-    if arg.train_pars.use_cuda:
-        torch.cuda.empty_cache()
-    return IVIM_signal_noisy[indx_back]
+import ivim.fitting_algorithms as fit
 
 
 def sim_signal(SNR, bvalues, sims=100000, Dmin=0.5 / 1000, Dmax=2.0 / 1000, fmin=0.1, fmax=0.5, Dsmin=0.05, Dsmax=0.2,
@@ -236,11 +194,11 @@ def sim_signal_predict(arg, SNR):
                 ax[i, j].set_xticks([])
                 ax[i, j].set_yticks([])
             b_id += 1
-    plt.subplots_adjust(hspace=0)
+    # plt.subplots_adjust(hspace=0)
     # plt.show()
-    if not os.path.isdir('plots'):
-        os.makedirs('plots')
-    plt.savefig('plots/plot_dwi_without_noise_param_{snr}_{method}.png'.format(snr=SNR, method=arg.save_name))
+    # if not os.path.isdir('plots'):
+    #     os.makedirs('plots')
+    # plt.savefig('plots/plot_dwi_without_noise_param_{snr}_{method}.png'.format(snr=SNR, method=arg.save_name))
 
     # Initialise dwi noise image
     dwi_noise_imag = np.zeros((sx, sy, sb))
@@ -255,24 +213,24 @@ def sim_signal_predict(arg, SNR):
     dwi_image_noise_norm = dwi_image_noise / S0_dwi_noisy[:, :, None]
 
     # plot simulated diffusion weighted image with noise
-    fig, ax = plt.subplots(2, int(np.round(arg.sim.bvalues.shape[0] / 2)), figsize=(20, 20))
-    b_id = 0
-    for i in range(2):
-        for j in range(int(np.round(arg.sim.bvalues.shape[0] / 2))):
-            if not b_id == arg.sim.bvalues.shape[0]:
-                ax[i, j].imshow(dwi_image_noise_norm[:, :, b_id], cmap='gray', clim=(0, 1))
-                ax[i, j].set_title('b = ' + str(arg.sim.bvalues[b_id]))
-                ax[i, j].set_xticks([])
-                ax[i, j].set_yticks([])
-            else:
-                # ax[i, j].imshow(dwi_image[:, :, b_id], cmap='gray', clim=(0, 1))
-                ax[i, j].set_title('End of b-values')
-                ax[i, j].set_xticks([])
-                ax[i, j].set_yticks([])
-            b_id += 1
-    plt.subplots_adjust(hspace=0)
+    # fig, ax = plt.subplots(2, int(np.round(arg.sim.bvalues.shape[0] / 2)), figsize=(20, 20))
+    # b_id = 0
+    # for i in range(2):
+    #     for j in range(int(np.round(arg.sim.bvalues.shape[0] / 2))):
+    #         if not b_id == arg.sim.bvalues.shape[0]:
+    #             ax[i, j].imshow(dwi_image_noise_norm[:, :, b_id], cmap='gray', clim=(0, 1))
+    #             ax[i, j].set_title('b = ' + str(arg.sim.bvalues[b_id]))
+    #             ax[i, j].set_xticks([])
+    #             ax[i, j].set_yticks([])
+    #         else:
+    #             # ax[i, j].imshow(dwi_image[:, :, b_id], cmap='gray', clim=(0, 1))
+    #             ax[i, j].set_title('End of b-values')
+    #             ax[i, j].set_xticks([])
+    #             ax[i, j].set_yticks([])
+    #         b_id += 1
+    # plt.subplots_adjust(hspace=0)
     # plt.show()
-    plt.savefig('plots/plot_dwi_with_noise_param_{snr}_{method}.png'.format(snr=SNR, method=arg.save_name))
+    # plt.savefig('plots/plot_dwi_with_noise_param_{snr}_{method}.png'.format(snr=SNR, method=arg.save_name))
 
     # reshape image
     dwi_image_long = np.reshape(dwi_image_noise_norm, (sx * sy, sb))

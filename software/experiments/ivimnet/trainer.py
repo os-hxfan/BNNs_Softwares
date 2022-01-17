@@ -89,26 +89,26 @@ class IVIMTrainer():
         
         return best_error, self.train_time, self.val_time
 
-    def _train_step(self, input, target, optimizer, epoch, n_batches, n_points):
+    def _train_step(self, input, optimizer, epoch, n_batches, n_points):
         assert optimizer is not None
 
         start = time.time()
 
         input = Variable(input, requires_grad=False)
-        target = Variable(target, requires_grad=False)
         if next(self.model.parameters()).is_cuda:
             input = input.cuda()
-            target = target.cuda()
 
         # When training we care about output value, not model parameters.
         optimizer.zero_grad()
-        output = self.model(input)[0]
+        output = self.model(input)[0]  # No clue what I'm doing.
         # Clamp outputs to prevernt overshooting - done in the original paper.
-        output[np.isnan(output)]
+        output[torch.isnan(output)]
         output[output < 0] = 0
         output[output > 3] = 3
 
-        obj, main_obj = self.criterion(output, target, self.model, n_batches, n_points)
+        # determine loss for batch; note that the loss is determined by the difference between
+        # the predicted signal and the actual signal. The loss does not look at Dt, Dp or Fp.
+        obj, main_obj = self.criterion(output, input, self.model, n_batches, n_points)
 
         # TODO - WTF? objective == objective? Shouldn't that be the main objective?
         if obj == obj:
@@ -119,7 +119,7 @@ class IVIMTrainer():
                 if p.grad is not None:
                     p.grad[p.grad != p.grad] = 0
             optimizer.step()
-        error_metric, ece, entropy, nll = utils.evaluate(output, input, target, self.model, self.args)
+        error_metric, ece, entropy, nll = utils.evaluate(output, input, input, self.model, self.args)
 
         self.train_timer += time.time() - start
 
@@ -132,9 +132,9 @@ class IVIMTrainer():
         if hasattr(self.model, 'qat_hook'):
             self.model.qat_hook(epoch)
 
-        for step, (input, target) in enumerate(loader):
+        for step, input in enumerate(loader):
             n = input.shape[0]
-            _error_metric, _obj, _main_obj, _nll, _ece, _entropy= self._train_step(input, target, optimizer, epoch, len(loader), len(loader.dataset))
+            _error_metric, _obj, _main_obj, _nll, _ece, _entropy= self._train_step(input, optimizer, epoch, len(loader), len(loader.dataset))
 
             obj.update(_obj, n)
             main_obj.update(_main_obj, n)
